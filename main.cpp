@@ -2,8 +2,18 @@
 #include <fstream>
 #include <vector>
 #include <queue>
+#include <unordered_set>
 
 using namespace std;
+
+int R;
+int C;
+int F;
+int F_act;
+int N;
+int N_act;
+int B;
+int T;
 
 struct pos {
     int x, y;
@@ -33,10 +43,14 @@ struct car {
     pos p;
     int t;
     vector<int> tasks;
+    queue<pos> cache;
+    unordered_set<pair<int, int>> used;
+    bool deleted;
 
     car() {
         p = pos(0, 0);
         t = 0;
+        deleted = false;
     }
 
     void print() {
@@ -67,20 +81,17 @@ typedef priority_queue<task, vector<task>, comparator> cell;
 
 typedef vector<vector<cell>> matrix;
 
-int R;
-int C;
-int F;
-int N;
-int B;
-int T;
-
 matrix m;
+int score;
 
 vector<car> cars;
 
 
 void read(ifstream& input) {
     input >> R >> C >> F >> N >> B >> T;
+    N_act = N;
+    F_act = F;
+    score = 0;
 
     m = matrix(R, vector<cell>(C));
 
@@ -94,8 +105,90 @@ void read(ifstream& input) {
 
 
 void solve() {
-    for(int i = 0; i < cars.size(); ++i) {
 
+    while(F_act >= 0) {
+        for(int i = 0; i < cars.size() && N_act > 0; ++i) {
+
+            car& car = cars[i];
+            if(car.deleted) {
+                break;
+            }
+
+            queue<pos> q;
+            if(!car.cache.empty()) {
+                q = car.cache;
+            } else {
+                q.push(car.p);
+            }
+
+            int dist = 0;
+            int current_level = 1;
+            int next_level = 0;
+
+            bool stop = false;
+
+            while(!q.empty() && !stop) {
+                pos p = q.front();
+                q.pop();
+
+                cell& cell = m[p.x][p.y];
+                if(!cell.empty()) {
+
+                    int res = car.propose_task(cell.top());
+                    if(res == 0) {
+                        car.cache = q;
+                        break;
+                    } else if(res == 1) {
+                        N_act--;
+                        car.tasks.push_back(cell.top().id);
+//                        score += car.update_task(task);
+                        cell.pop();
+                    } else { // This task is not feasible, keep looking for another one
+                        // Propose the rest of tasks in this cell
+                        // NOT BY NOW
+                    }
+                }
+
+                for(int r = -1; r <= 1; ++r) {
+                    for(int c = -1; c <= 1; ++c) {
+                        if((r == 0 || c == 0) && (r != 0 || c != 0)) {
+                            pos next = p;
+                            next.x += r;
+                            next.y += c;
+                            if(next.x >= 0 && next.y >= 0 && next.x < R && next.y < C) {
+                                if(next.dist(car.p) > dist) {
+                                    pair<int, int> aux(next.x, next.y);
+                                    if(car.used.count(aux) == 0) {
+                                        car.used.insert(aux);
+
+                                        q.push(next);
+                                        ++next_level;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+
+                if(--current_level == 0) {
+                    current_level = next_level;
+                    next_level = 0;
+                    ++dist;
+
+                    car.used.clear();
+                }
+
+            }
+
+            if(q.empty()) {
+                --F_act;
+                car.deleted = true;
+                car.used.clear();
+                // TODO delete this car since it can't get another task ever
+            }
+
+        }
     }
 }
 
@@ -113,6 +206,9 @@ int main(int num_args, char* args[]) {
     read(input);
 
     solve();
+
+    cout << "score: " << score << endl;
+    exit(1);
 
     for(int i = 0; i < F; ++i) {
         cars[i].print();
