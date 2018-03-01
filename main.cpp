@@ -25,7 +25,7 @@ public:
 
     task(ifstream& input, int id) {
         input >> init.x >> init.y >> end.x >> end.y >> s >> f;
-        this-> id = id;
+        this->id = id;
     }
 };
 
@@ -45,6 +45,10 @@ struct car {
             cout << tasks[i] << " ";
         }
         cout << endl;
+    }
+
+    int propose_task(task t) {
+
     }
 };
 
