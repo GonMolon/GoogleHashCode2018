@@ -6,6 +6,7 @@
 
 using namespace std;
 
+
 int R;
 int C;
 int F;
@@ -24,6 +25,18 @@ struct pos {
         this->x = x;
         this->y = y;
     }
+
+    bool operator==(const pos& p) const {
+        return x == p.x && y == p.y;
+    }
+
+};
+
+struct pos_hasher {
+public:
+    size_t operator()(const pos &p) const {
+        return hash<int>()(p.x) ^ hash<int>()(p.y);
+    }
 };
 
 struct task {
@@ -41,15 +54,15 @@ public:
 
 struct car {
     pos p;
-    int t;
+    int time;
     vector<int> tasks;
     queue<pos> cache;
-    unordered_set<pair<int, int>> used;
+    unordered_set<pos, pos_hasher> used;
     bool deleted;
 
     car() {
         p = pos(0, 0);
-        t = 0;
+        time = 0;
         deleted = false;
     }
 
@@ -61,7 +74,50 @@ struct car {
         cout << endl;
     }
 
+    int update_task(task t) {
+        tasks.push_back(t.id);
+
+        int D = abs(p.x - t.init.x) + abs(p.y - t.init.y );
+        int Ben = abs(t.init.x - t.end.x) + abs(t.end.y - t.init.y);
+        int Te = max(D,t.s - time);
+        p = t.end;
+        if (time + Te > t.s) {
+            time = Te + time + Ben;
+            return Ben;
+        }
+        else {
+            time = time + Te + Ben;
+            return Ben + B;
+        }
+
+    }
+
     int propose_task(task t) {
+        int D = abs(p.x - t.init.x) + abs(p.y - t.init.y );
+        int Ben = abs(t.init.x - t.end.x) + abs(t.end.y - t.init.y);
+        int Te = max(D,t.s - time);
+        int Bonus = 1;
+        if (Te > D) Bonus = 0;
+
+        //POSSIBLE O NO
+        if (time + D + Ben > t.f) return -1;
+
+        double Dw = Te / (R+C);
+        double Benw = Ben/ (R+C);
+        double Bw = Bonus*B / (Benw*10000);
+
+        double Taskw = N_act / N;
+
+        double c1 = 0.1;
+        double c2 = 0.3;
+        double c3 = 0.3;
+        double c4 = 1- c1 - c2 - c3;
+        double Pref = 0.001;
+        double prob = c1 * Dw + c2 * Benw + c3 * Bw + c4 * Taskw;
+
+        if (prob > Pref) return 1;
+        return 1;
+        return 0;
 
     }
 };
@@ -86,7 +142,6 @@ int score;
 
 vector<car> cars;
 
-
 void read(ifstream& input) {
     input >> R >> C >> F >> N >> B >> T;
     N_act = N;
@@ -106,8 +161,11 @@ void read(ifstream& input) {
 
 void solve() {
 
-    while(F_act >= 0) {
+    while(F_act > 0) {
         for(int i = 0; i < cars.size() && N_act > 0; ++i) {
+//            cout << i << endl;
+//            cout << N_act << endl
+            cout << F_act << endl;
 
             car& car = cars[i];
             if(car.deleted) {
@@ -129,7 +187,9 @@ void solve() {
 
             while(!q.empty() && !stop) {
                 pos p = q.front();
+//                cout << "current pos: " << p.x << ", " << p.y << endl;
                 q.pop();
+//                cout << "dist: " << dist << endl;
 
                 cell& cell = m[p.x][p.y];
                 if(!cell.empty()) {
@@ -140,8 +200,7 @@ void solve() {
                         break;
                     } else if(res == 1) {
                         N_act--;
-                        car.tasks.push_back(cell.top().id);
-//                        score += car.update_task(task);
+                        score += car.update_task(cell.top());
                         cell.pop();
                     } else { // This task is not feasible, keep looking for another one
                         // Propose the rest of tasks in this cell
@@ -156,11 +215,11 @@ void solve() {
                             next.x += r;
                             next.y += c;
                             if(next.x >= 0 && next.y >= 0 && next.x < R && next.y < C) {
-                                if(next.dist(car.p) > dist) {
+                                int d = abs(next.x - car.p.x) + abs(next.y - car.p.y );
+                                if(d > dist) {
                                     pair<int, int> aux(next.x, next.y);
-                                    if(car.used.count(aux) == 0) {
-                                        car.used.insert(aux);
-
+                                    if(car.used.count(next) == 0) {
+                                        car.used.insert(next);
                                         q.push(next);
                                         ++next_level;
                                     }
@@ -208,7 +267,6 @@ int main(int num_args, char* args[]) {
     solve();
 
     cout << "score: " << score << endl;
-    exit(1);
 
     for(int i = 0; i < F; ++i) {
         cars[i].print();
