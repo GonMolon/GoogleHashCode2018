@@ -14,6 +14,7 @@ int B;
 int T;
 int total_assigned_tasks;
 int score;
+int max_possible_score;
 
 struct pos {
     int x, y;
@@ -63,10 +64,12 @@ struct car {
     int time;
     list<int> available_tasks;
     list<int> assigned_tasks;
+    int individual_score;
 
     car() {
         p = pos(0, 0);
         time = 0;
+        individual_score = 0;
         for(int i = 0; i < N; ++i) {
             available_tasks.push_back(i);
         }
@@ -87,7 +90,9 @@ struct car {
         t.available = false;
         --N_act;
         ++total_assigned_tasks;
-        score += get_score(t);
+        int new_score = get_score(t);
+        individual_score += new_score;
+        score += new_score;
 
         int dist = p.dist(t.init);
         time = time + max(dist, t.s - time) + t.length;
@@ -106,7 +111,18 @@ struct car {
 
     double get_heuristic(task& t) {
         int dist = p.dist(t.init);
-        return get_score(t) - dist; // TODO penalize waiting time
+        int waiting_time = max(t.s - (time + dist), 0);
+        int length_penalization = 0;
+        if(B > t.length) {
+            length_penalization = t.length;
+        }
+        double score_diff = (double (score))/F - individual_score;
+        double incentive = 0;
+        if(score_diff > 0) {
+            incentive = score_diff * score_diff / 100;
+        }
+        return get_score(t) - 3*dist - waiting_time - length_penalization + incentive;
+        //TODO avoid leaving the metropolis
     }
 
     bool is_reachable(task& t) {
@@ -146,6 +162,7 @@ void read(ifstream& input) {
     N_act = N;
     total_assigned_tasks = 0;
     score = 0;
+    max_possible_score = 0;
 
     tasks = vector<task>(N);
     cars = list<car>(F);
@@ -153,6 +170,7 @@ void read(ifstream& input) {
     for(int i = 0; i < N; ++i) {
         task t = task(input);
         tasks[i] = t;
+        max_possible_score += t.length + B;
     }
 }
 
@@ -205,8 +223,8 @@ int main(int num_args, char* args[]) {
         c.print();
     }
 
-//    cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" << endl;
-//    cout << "score: " << score << endl;
-//    cout << "ratio: " << ((double)total_assigned_tasks)/N << endl;
-
+    cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" << endl;
+    cout << "score: " << score << endl;
+    cout << "ratio of completed tasks: " << ((double)total_assigned_tasks)/N << endl;
+    cout << "ratio of total score: " << ((double)score)/max_possible_score << endl;
 }
