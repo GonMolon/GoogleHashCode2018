@@ -3,6 +3,9 @@ project(GoogleHashCode)
 
 set(CMAKE_CXX_STANDARD 11)
 
+set(CMAKE_BUILD_TYPE ReleaseWithAsserts)
+set(CMAKE_CXX_FLAGS_RELEASEWITHASSERTS "-Wall -O3")
+
 set(SOURCE_FILES
         local_search/HillClimbing.cpp
         local_search/HillClimbing.h
