@@ -13,6 +13,7 @@ int N_act;
 int B;
 int T;
 int total_assigned_tasks;
+int score;
 
 struct pos {
     int x, y;
@@ -80,13 +81,21 @@ struct car {
     }
 
     void assign_task(int id) {
+        task& t = tasks[id];
+
         assigned_tasks.push_back(id);
-        tasks[id].available = false;
+        t.available = false;
         --N_act;
         ++total_assigned_tasks;
-        task& t = tasks[id];
-        time = time + p.dist(t.init) + t.length;
+        score += get_score(t);
+
+        int dist = p.dist(t.init);
+        time = time + max(dist, t.s - time) + t.length;
         p = t.end;
+        if(T < time) {
+            cout << "ERROR" << endl;
+            exit(1);
+        }
     }
 
     int get_score(task& t) {
@@ -97,7 +106,7 @@ struct car {
 
     double get_heuristic(task& t) {
         int dist = p.dist(t.init);
-        return get_score(t) - dist;
+        return get_score(t) - dist; // TODO penalize waiting time
     }
 
     bool is_reachable(task& t) {
@@ -129,8 +138,6 @@ struct car {
     }
 };
 
-
-int score;
 list<car> cars;
 list<car> used_cars;
 
@@ -175,7 +182,6 @@ void solve() {
         }
         if(selected_car != cars.end()) {
             selected_car->assign_task(assigned_task);
-            score += selected_car->get_score(tasks[assigned_task]);
         }
     }
 }
